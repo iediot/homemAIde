@@ -33,7 +33,24 @@ class Value:
         out._backward = _backward
         return out
 
-x = Value(50.0)
+    def backward(self):
+        topo = []
+        visited = set()
+
+        def build(v):
+            if v not in visited:
+                visited.add(v)
+                for child in v._prev:
+                    build(child)
+                topo.append(v)
+
+        build(self)
+
+        self.grad = 1.0
+        for v in reversed(topo):
+            v._backward()
+
+x = Value(100.0)
 w = Value(2.0)
 b = Value(10.0)
 
@@ -41,24 +58,16 @@ lr = 0.00001
 target = Value(212.0)
 
 for step in range(20):
-    # 1. forward: predict and measure wrongness
     wx = w * x
     pred = wx + b
     error = pred - target
     loss = error * error
 
-    # 2. reset grads (they use +=, so old values would pile up)
     w.grad = 0.0
     b.grad = 0.0
 
-    # 3. backward: your four lines, with loss.grad = 1.0 first
-    loss.grad = 1.0
-    loss._backward()
-    error._backward()
-    pred._backward()
-    wx._backward()
+    loss.backward()
 
-    # 4. learn: nudge each knob against its gradient
     w.data -= lr * w.grad
     b.data -= lr * b.grad
 
