@@ -1,9 +1,6 @@
 import math
 import random
 
-from typing import AnyStr
-
-
 class Value:
     def __init__(self, data, _children=(), _op=''):
         self.data = data
@@ -113,13 +110,51 @@ class MLP:
         return params
 
 
-xs = [
-    [5.1, 3.5, 1.4, 0.2], [4.9, 3.0, 1.4, 0.2], [4.7, 3.2, 1.3, 0.2], [4.6, 3.1, 1.5, 0.2], [5.0, 3.6, 1.4, 0.2],  # setosa
-    [7.0, 3.2, 4.7, 1.4], [6.4, 3.2, 4.5, 1.5], [6.9, 3.1, 4.9, 1.5], [5.5, 2.3, 4.0, 1.3], [6.5, 2.8, 4.6, 1.5],  # versicolor
-    [6.3, 3.3, 6.0, 2.5], [5.8, 2.7, 5.1, 1.9], [7.1, 3.0, 5.9, 2.1], [6.3, 2.9, 5.6, 1.8], [6.5, 3.0, 5.8, 2.2],  # virginica
-]
+labels = {
+    "Iris-setosa": [1, -1, -1],
+    "Iris-versicolor": [-1, 1, -1],
+    "Iris-virginica": [-1, -1, 1]
+}
 
-ys = [[1, -1, -1]] * 5 + [[-1, 1, -1]] * 5 + [[-1, -1, 1]] * 5
+all_xs = []
+all_ys = []
+
+with open("iris.data") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(",")
+        measurement = [float(p) for p in parts[:4]]
+        species = labels[parts[-1]]
+        all_xs.append(measurement)
+        all_ys.append(species)
+
+xs = all_xs[0:40] + all_xs[50:90] + all_xs[100:140]
+ys = all_ys[0:40] + all_ys[50:90] + all_ys[100:140]
+xs_test = all_xs[40:50] + all_xs[90:100] + all_xs[140:150]
+ys_test = all_ys[40:50] + all_ys[90:100] + all_ys[140:150]
+
+maxes = []
+mins = []
+
+for col_idx in range(0, 4):
+    col = [row[col_idx] for row in xs]
+    maxes.append(max(col))
+    mins.append(min(col))
+
+def normalize(data):
+    result = []
+    for row in data:
+        new_row = []
+        for value, lo, hi in zip(row, mins, maxes):
+            new_row.append((value - lo) / (hi - lo))
+        result.append(new_row)
+    return result
+
+xs = normalize(xs)
+xs_test = normalize(xs_test)
+print(xs[0], xs_test[0])
 
 model = MLP(4, [8, 3])
 
@@ -144,6 +179,6 @@ for step in range(200):
     if step % 10 == 0:
         print(step, loss.data)
 
-for x, y in zip(xs, ys):
+for x, y in zip(xs_test, ys_test):
     out = model([Value(v) for v in x])
     print(y, [round(o.data, 2) for o in out])
