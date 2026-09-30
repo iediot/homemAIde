@@ -214,83 +214,90 @@ class Tensor:
         out._backward = _backward
         return out
 
-a = Tensor([[0.5, 3.0]])
-b = Tensor([[2.0, 1.0]])
-out = (a * b - b).tanh()
-out.backward()
-print(out)
-print(a.grad)
-print(b.grad)
+    def sum(self):
+        out = Tensor(self.data.sum(), (self,), 'sum')
 
-# labels = {
-#     "Iris-setosa": [1, -1, -1],
-#     "Iris-versicolor": [-1, 1, -1],
-#     "Iris-virginica": [-1, -1, 1]
-# }
-#
-# all_xs = []
-# all_ys = []
-#
-# with open("iris.data") as f:
-#     for line in f:
-#         line = line.strip()
-#         if not line:
-#             continue
-#         parts = line.split(",")
-#         measurement = [float(p) for p in parts[:4]]
-#         species = labels[parts[-1]]
-#         all_xs.append(measurement)
-#         all_ys.append(species)
-#
-# xs = all_xs[0:40] + all_xs[50:90] + all_xs[100:140]
-# ys = all_ys[0:40] + all_ys[50:90] + all_ys[100:140]
-# xs_test = all_xs[40:50] + all_xs[90:100] + all_xs[140:150]
-# ys_test = all_ys[40:50] + all_ys[90:100] + all_ys[140:150]
-#
-# maxes = []
-# mins = []
-#
-# for col_idx in range(0, 4):
-#     col = [row[col_idx] for row in xs]
-#     maxes.append(max(col))
-#     mins.append(min(col))
-#
-# def normalize(data):
-#     result = []
-#     for row in data:
-#         new_row = []
-#         for value, lo, hi in zip(row, mins, maxes):
-#             new_row.append((value - lo) / (hi - lo))
-#         result.append(new_row)
-#     return result
-#
-# xs = normalize(xs)
-# xs_test = normalize(xs_test)
-# print(xs[0], xs_test[0])
-#
-# model = MLP(4, [8, 3])
-#
-# lr = 0.001
-#
-# for step in range(200):
-#     loss = Value(0.0)
-#     for x, y in zip(xs, ys):
-#         out = model([Value(v) for v in x])
-#         for o, t in zip(out, y):
-#             error = o - Value(t)
-#             loss += error * error
-#
-#     for p in model.parameters():
-#         p.grad = 0.0
-#
-#     loss.backward()
-#
-#     for p in model.parameters():
-#         p.data -= lr * p.grad
-#
-#     if step % 10 == 0:
-#         print(step, loss.data)
-#
-# for x, y in zip(xs_test, ys_test):
-#     out = model([Value(v) for v in x])
-#     print(y, [round(o.data, 2) for o in out])
+        def _backward():
+            self.grad += out.grad
+
+        out._backward = _backward
+        return out
+
+labels = {
+    "Iris-setosa": [1, -1, -1],
+    "Iris-versicolor": [-1, 1, -1],
+    "Iris-virginica": [-1, -1, 1]
+}
+
+all_xs = []
+all_ys = []
+
+with open("iris.data") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(",")
+        measurement = [float(p) for p in parts[:4]]
+        species = labels[parts[-1]]
+        all_xs.append(measurement)
+        all_ys.append(species)
+
+xs = all_xs[0:40] + all_xs[50:90] + all_xs[100:140]
+ys = all_ys[0:40] + all_ys[50:90] + all_ys[100:140]
+xs_test = all_xs[40:50] + all_xs[90:100] + all_xs[140:150]
+ys_test = all_ys[40:50] + all_ys[90:100] + all_ys[140:150]
+
+maxes = []
+mins = []
+
+for col_idx in range(0, 4):
+    col = [row[col_idx] for row in xs]
+    maxes.append(max(col))
+    mins.append(min(col))
+
+def normalize(data):
+    result = []
+    for row in data:
+        new_row = []
+        for value, lo, hi in zip(row, mins, maxes):
+            new_row.append((value - lo) / (hi - lo))
+        result.append(new_row)
+    return result
+
+xs = normalize(xs)
+xs_test = normalize(xs_test)
+
+X = Tensor(xs)
+Y = Tensor(ys)
+
+W1 = Tensor(np.random.uniform(-1, 1, (4, 8)))
+b1 = Tensor(np.random.uniform(-1, 1, (1, 8)))
+W2 = Tensor(np.random.uniform(-1, 1, (8, 3)))
+b2 = Tensor(np.random.uniform(-1, 1, (1, 3)))
+params = [W1, b1, W2, b2]
+
+lr = 0.001
+
+for step in range(1000):
+    h = (X @ W1 + b1).tanh()
+    out = (h @ W2 + b2).tanh()
+    err = out - Y
+    loss = (err * err).sum()
+
+    # same three steps as always
+    for p in params:
+        p.grad = np.zeros_like(p.data)
+    loss.backward()
+    for p in params:
+        p.data -= lr * p.grad
+
+    if step % 100 == 0:
+        print(step, loss.data)
+
+X_test = Tensor(xs_test)
+Y_test = Tensor(ys_test)
+h = (X_test @ W1 + b1).tanh()
+out = (h @ W2 + b2).tanh()
+correct = (out.data.argmax(axis=1) == Y_test.data.argmax(axis=1)).sum()
+print(f"test accuracy: {correct}/{len(xs_test)}")
