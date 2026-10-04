@@ -16,7 +16,7 @@ Gradients are checked against PyTorch at every stage, and PyTorch is used only a
 
 ## Status
 
-🚧 Stage 1: scalar autograd engine in progress.
+Stage 1: scalar autograd engine in progress.
 
 ## Running
 
